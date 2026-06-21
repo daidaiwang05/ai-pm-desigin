@@ -146,9 +146,16 @@ export class ProjectService {
       throw new Error('项目不存在或无权限修改');
     }
 
+    // 明确允许更新的字段，防止 Mass Assignment
+    const allowedData: Record<string, any> = {};
+    if (input.name !== undefined) allowedData.name = input.name;
+    if (input.description !== undefined) allowedData.description = input.description;
+    if (input.isPublic !== undefined) allowedData.isPublic = input.isPublic;
+    if (input.settings !== undefined) allowedData.settings = input.settings;
+
     return prisma.project.update({
       where: { id: projectId },
-      data: input,
+      data: allowedData,
     });
   }
 

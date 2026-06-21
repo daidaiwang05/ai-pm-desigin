@@ -83,6 +83,25 @@ class GenerateRequest(BaseModel):
     existing_components: Optional[List[str]] = None
     page_count: int = 1
 
+    class Config:
+        # 限制 prompt 长度，防止滥用
+        json_schema_extra = {
+            "example": {
+                "prompt": "设计一个登录页面",
+                "device_type": "desktop",
+                "page_count": 1
+            }
+        }
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        # 限制 prompt 长度为 10000 字符
+        if len(self.prompt) > 10000:
+            raise ValueError("prompt 长度不能超过 10000 字符")
+        # 限制 page_count 范围
+        if self.page_count < 1 or self.page_count > 10:
+            raise ValueError("page_count 必须在 1-10 之间")
+
 
 class PRDGenerateRequest(BaseModel):
     product_name: str
@@ -90,6 +109,14 @@ class PRDGenerateRequest(BaseModel):
     target_users: Optional[str] = None
     core_features: Optional[List[str]] = None
     industry: Optional[str] = None
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        # 限制字段长度
+        if len(self.product_name) > 200:
+            raise ValueError("product_name 长度不能超过 200 字符")
+        if len(self.description) > 5000:
+            raise ValueError("description 长度不能超过 5000 字符")
 
 
 class PRDResponse(BaseModel):
@@ -144,12 +171,24 @@ class RefineRequest(BaseModel):
     instruction: str
     device_type: str = "desktop"
 
+    def __init__(self, **data):
+        super().__init__(**data)
+        # 限制 instruction 长度
+        if len(self.instruction) > 5000:
+            raise ValueError("instruction 长度不能超过 5000 字符")
+
 
 class AddComponentRequest(BaseModel):
     page: PageSchema
     component_type: str
     description: str
     device_type: str = "desktop"
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        # 限制 description 长度
+        if len(self.description) > 2000:
+            raise ValueError("description 长度不能超过 2000 字符")
 
 
 class ComponentInfo(BaseModel):
@@ -281,7 +320,8 @@ async def generate_prototype_stream(request: GenerateRequest):
         import traceback
         logger.error(f"Stream generate error: {e}")
         logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=str(e))
+        # 不向客户端暴露内部错误详情
+        raise HTTPException(status_code=500, detail="生成失败，请稍后重试")
 
 
 # ============================================
@@ -388,7 +428,8 @@ async def generate_prd(request: PRDGenerateRequest):
         import traceback
         logger.error(f"PRD generation error: {e}")
         logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=str(e))
+        # 不向客户端暴露内部错误详情
+        raise HTTPException(status_code=500, detail="PRD 生成失败，请稍后重试")
 
 
 def generate_mock_prd(request: PRDGenerateRequest) -> Dict[str, Any]:
@@ -537,7 +578,8 @@ async def generate_prototype(request: GenerateRequest):
         import traceback
         logger.error(f"Generate error: {e}")
         logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=str(e))
+        # 不向客户端暴露内部错误详情
+        raise HTTPException(status_code=500, detail="生成失败，请稍后重试")
 
 
 @app.post("/ai/refine")
@@ -574,7 +616,8 @@ async def refine_prototype(request: RefineRequest):
 
     except Exception as e:
         logger.error(f"Refine error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # 不向客户端暴露内部错误详情
+        raise HTTPException(status_code=500, detail="优化失败，请稍后重试")
 
 
 @app.post("/ai/add-component")
@@ -619,7 +662,8 @@ async def add_component(request: AddComponentRequest):
         raise
     except Exception as e:
         logger.error(f"Add component error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # 不向客户端暴露内部错误详情
+        raise HTTPException(status_code=500, detail="添加组件失败，请稍后重试")
 
 
 @app.get("/ai/component-props/{component_type}")

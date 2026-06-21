@@ -1,4 +1,5 @@
 import { prisma } from '../../utils/prisma';
+import { checkProjectAccess, checkIterationAccess, checkPageAccess } from '../../utils/authorization';
 
 export interface CreatePageInput {
   name: string;
@@ -71,7 +72,10 @@ export class PageService {
     });
   }
 
-  async getById(pageId: string) {
+  async getById(pageId: string, userId: string) {
+    // 验证用户有权访问此页面
+    const accessPage = await checkPageAccess(userId, pageId);
+
     const page = await prisma.page.findUnique({
       where: { id: pageId },
       include: {
@@ -98,7 +102,10 @@ export class PageService {
     return page;
   }
 
-  async update(pageId: string, input: UpdatePageInput) {
+  async update(pageId: string, userId: string, input: UpdatePageInput) {
+    // 验证用户有权访问此页面
+    await checkPageAccess(userId, pageId);
+
     const page = await prisma.page.findUnique({
       where: { id: pageId },
     });
@@ -138,7 +145,10 @@ export class PageService {
     });
   }
 
-  async delete(pageId: string) {
+  async delete(pageId: string, userId: string) {
+    // 验证用户有权访问此页面
+    await checkPageAccess(userId, pageId);
+
     const page = await prisma.page.findUnique({
       where: { id: pageId },
     });
@@ -179,6 +189,9 @@ export class PageService {
   }
 
   async duplicate(pageId: string, userId: string) {
+    // 验证用户有权访问此页面
+    await checkPageAccess(userId, pageId);
+
     const sourcePage = await prisma.page.findUnique({
       where: { id: pageId },
       include: {

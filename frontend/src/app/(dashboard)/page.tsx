@@ -70,6 +70,21 @@ export default function DashboardPage() {
       const response = await fetch(`${API_BASE}/projects?page=1&pageSize=100`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      // 检查响应状态
+      if (response.status === 401) {
+        // Token 过期，清除登录状态并跳转
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("user");
+        window.location.href = "/login";
+        return;
+      }
+
+      if (!response.ok) {
+        console.error("Failed to load projects:", response.status);
+        return;
+      }
+
       const result = await response.json();
       if (result.success && result.data) {
         setProjects(result.data);
@@ -128,6 +143,21 @@ export default function DashboardPage() {
           description: newProjectDesc,
         }),
       });
+
+      // 检查响应状态
+      if (response.status === 401) {
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("user");
+        window.location.href = "/login";
+        return;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.error?.message || "创建项目失败，请重试");
+        return;
+      }
+
       const result = await response.json();
       if (result.success && result.data) {
         setShowCreateModal(false);
@@ -137,6 +167,7 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Failed to create project:", error);
+      alert("网络错误，请检查连接后重试");
     } finally {
       setIsCreating(false);
     }

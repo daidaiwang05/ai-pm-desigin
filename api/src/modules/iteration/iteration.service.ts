@@ -1,4 +1,5 @@
 import { prisma } from '../../utils/prisma';
+import { checkIterationAccess } from '../../utils/authorization';
 
 export interface CreateIterationInput {
   name: string;
@@ -69,7 +70,10 @@ export class IterationService {
     });
   }
 
-  async getById(iterationId: string) {
+  async getById(iterationId: string, userId: string) {
+    // 验证用户有权访问此迭代
+    await checkIterationAccess(userId, iterationId);
+
     const iteration = await prisma.iteration.findUnique({
       where: { id: iterationId },
       include: {
@@ -91,7 +95,10 @@ export class IterationService {
     return iteration;
   }
 
-  async setCurrent(iterationId: string) {
+  async setCurrent(iterationId: string, userId: string) {
+    // 验证用户有权访问此迭代
+    await checkIterationAccess(userId, iterationId);
+
     const iteration = await prisma.iteration.findUnique({
       where: { id: iterationId },
     });

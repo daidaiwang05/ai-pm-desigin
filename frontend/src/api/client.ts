@@ -14,17 +14,20 @@ const API_BASE_URL = typeof window !== 'undefined'
 
 class ApiClient {
   private baseUrl: string;
-  private token: string | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
+  }
+
+  // 每次从 localStorage 读取最新的 token，避免缓存过期
+  private getToken(): string | null {
     if (typeof window !== 'undefined') {
-      this.token = localStorage.getItem('auth_token');
+      return localStorage.getItem('auth_token');
     }
+    return null;
   }
 
   setToken(token: string | null) {
-    this.token = token;
     if (typeof window !== 'undefined') {
       if (token) {
         localStorage.setItem('auth_token', token);
@@ -32,10 +35,6 @@ class ApiClient {
         localStorage.removeItem('auth_token');
       }
     }
-  }
-
-  getToken(): string | null {
-    return this.token;
   }
 
   private async request<T>(
@@ -47,8 +46,10 @@ class ApiClient {
       ...(options.headers as Record<string, string>),
     };
 
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+    // 每次请求时获取最新的 token
+    const token = this.getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
     const url = `${this.baseUrl}${endpoint}`;
@@ -58,6 +59,16 @@ class ApiClient {
         ...options,
         headers,
       });
+
+      // 处理 401 错误 - 清除登录状态
+      if (response.status === 401) {
+        this.setToken(null);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+        }
+        throw new Error('登录已过期，请重新登录');
+      }
 
       const data = await response.json();
 

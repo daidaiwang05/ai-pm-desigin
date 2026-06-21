@@ -6,8 +6,9 @@ import { AuthRequest } from '../../middleware/auth';
 export class ProjectController {
   async list(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const pageSize = parseInt(req.query.pageSize as string) || 20;
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      // 限制 pageSize 最大为 100，防止资源耗尽
+      const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 20));
 
       const { projects, total } = await projectService.list(req.userId!, page, pageSize);
       sendPaginated(res, projects, total, page, pageSize);
