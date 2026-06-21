@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "skills": {
+    "codeconductor": {
+      "name": "CodeConductor.ai",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=codeconductor",
+      "source": "community",
+      "version": "1.0.1",
+      "installedAt": "2026-06-19T13:05:16Z"
+    }
+  }
+}

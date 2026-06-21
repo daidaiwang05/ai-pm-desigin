@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "skills": {
+    "code": {
+      "name": "Code",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=code",
+      "source": "community",
+      "version": "1.0.4",
+      "installedAt": "2026-06-21T10:26:46Z"
+    },
+    "superpowers": {
+      "name": "Superpowers Dev Workflow",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=superpowers",
+      "source": "community",
+      "version": "1.0.0",
+      "installedAt": "2026-06-21T10:28:56Z"
+    },
+    "api-tester": {
+      "name": "Api Tester",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=api-tester",
+      "source": "community",
+      "version": "1.0.0",
+      "installedAt": "2026-06-21T10:30:36Z"
+    }
+  }
+}

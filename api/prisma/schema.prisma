@@ -1,0 +1,394 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Users
+// ============================================
+model User {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String    @unique @db.VarChar(255)
+  name         String    @db.VarChar(100)
+  avatarUrl    String?   @map("avatar_url") @db.VarChar(500)
+  phone        String?   @db.VarChar(20)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz()
+  isActive     Boolean   @default(true) @map("is_active")
+  provider     String    @default("email") @db.VarChar(50)
+  providerId   String?   @map("provider_id") @db.VarChar(255)
+
+  // Relations
+  ownedOrganizations Organization[]   @relation("OrgOwner")
+  ownedProjects      Project[]        @relation("ProjectOwner")
+  projectMembers     ProjectMember[]
+  annotations        Annotation[]     @relation("AnnotationCreator")
+  comments           AnnotationComment[]
+  activities         Activity[]
+
+  @@unique([provider, providerId])
+  @@index([email])
+  @@index([provider, providerId])
+  @@map("users")
+}
+
+// ============================================
+// Organizations
+// ============================================
+model Organization {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @db.VarChar(100)
+  slug      String   @unique @db.VarChar(50)
+  plan      String   @default("free") @db.VarChar(20)
+  logoUrl   String?  @map("logo_url") @db.VarChar(500)
+  ownerId   String   @map("owner_id") @db.Uuid
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Relations
+  owner    User      @relation("OrgOwner", fields: [ownerId], references: [id])
+  projects Project[]
+
+  @@index([slug])
+  @@index([ownerId])
+  @@map("organizations")
+}
+
+// ============================================
+// Projects
+// ============================================
+model Project {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                String    @db.VarChar(200)
+  description         String?
+  orgId               String    @map("org_id") @db.Uuid
+  ownerId             String    @map("owner_id") @db.Uuid
+  currentIterationId  String?   @map("current_iteration_id") @db.Uuid
+  isPublic            Boolean   @default(false) @map("is_public")
+  thumbnailUrl        String?   @map("thumbnail_url") @db.VarChar(500)
+  settings            Json      @default("{\"default_device\":\"desktop\",\"grid_visible\":true,\"snap_to_grid\":true}")
+  metadata            Json      @default("{}")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+  deletedAt           DateTime? @map("deleted_at") @db.Timestamptz()
+
+  // Relations
+  owner            User              @relation("ProjectOwner", fields: [ownerId], references: [id])
+  organization     Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  currentIteration Iteration?        @relation("CurrentIteration", fields: [currentIterationId], references: [id])
+  iterations       Iteration[]       @relation("ProjectIterations")
+  members          ProjectMember[]
+  activities       Activity[]
+
+  @@index([orgId])
+  @@index([ownerId])
+  @@map("projects")
+}
+
+// ============================================
+// Project Members
+// ============================================
+model ProjectMember {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId  String    @map("project_id") @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  role       String    @default("editor") @db.VarChar(20)
+  inviteEmail String?  @map("invite_email") @db.VarChar(255)
+  invitedBy  String?   @map("invited_by") @db.Uuid
+  joinedAt   DateTime  @default(now()) @map("joined_at") @db.Timestamptz()
+
+  // Relations
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+// ============================================
+// Iterations
+// ============================================
+model Iteration {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId      String    @map("project_id") @db.Uuid
+  name           String    @db.VarChar(100)
+  version        String    @db.VarChar(20)
+  status         String    @default("editing") @db.VarChar(20)
+  description    String?
+  basedOnId      String?   @map("based_on_id") @db.Uuid
+  createdBy      String    @map("created_by") @db.Uuid
+  snapshotUrl    String?   @map("snapshot_url") @db.VarChar(500)
+  isCurrent      Boolean   @default(false) @map("is_current")
+  reviewDeadline DateTime? @map("review_deadline") @db.Timestamptz()
+  approvedBy     String?   @map("approved_by") @db.Uuid
+  approvedAt     DateTime? @map("approved_at") @db.Timestamptz()
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Relations
+  project         Project        @relation("ProjectIterations", fields: [projectId], references: [id], onDelete: Cascade)
+  basedOn         Iteration?     @relation("IterationBranch", fields: [basedOnId], references: [id])
+  branches        Iteration[]    @relation("IterationBranch")
+  currentInProject Project[]     @relation("CurrentIteration")
+  pages           Page[]
+  annotations     Annotation[]
+  previewLinks    PreviewLink[]
+  snapshots       Snapshot[]
+
+  @@unique([projectId, version])
+  @@index([projectId])
+  @@index([projectId, isCurrent])
+  @@map("iterations")
+}
+
+// ============================================
+// Pages
+// ============================================
+model Page {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  iterationId String    @map("iteration_id") @db.Uuid
+  name        String    @db.VarChar(200)
+  slug        String?   @db.VarChar(100)
+  description String?
+  pageType    String    @default("screen") @map("page_type") @db.VarChar(30)
+  deviceType  String    @default("desktop") @map("device_type") @db.VarChar(20)
+  viewportW   Int       @default(1440) @map("viewport_w")
+  viewportH   Int       @default(900) @map("viewport_h")
+  bgColor     String    @default("#FFFFFF") @map("bg_color") @db.VarChar(20)
+  sortOrder   Int       @default(0) @map("sort_order")
+  flowGroup   String?   @map("flow_group") @db.VarChar(100)
+  isCover     Boolean   @default(false) @map("is_cover")
+  aiPrompt    String?   @map("ai_prompt")
+  createdBy   String    @map("created_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz()
+
+  // Relations
+  iteration   Iteration    @relation(fields: [iterationId], references: [id], onDelete: Cascade)
+  components  Component[]
+  annotations Annotation[]
+
+  @@unique([iterationId, slug])
+  @@index([iterationId])
+  @@index([iterationId, sortOrder])
+  @@map("pages")
+}
+
+// ============================================
+// Components
+// ============================================
+model Component {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pageId        String    @map("page_id") @db.Uuid
+  componentType String    @map("component_type") @db.VarChar(50)
+  name          String?   @db.VarChar(100)
+  props         Json      @default("{}")
+  layout        Json      @default("{}")
+  styles        Json      @default("{}")
+  interactions  Json      @default("[]")
+  states        Json      @default("{}")
+  parentId      String?   @map("parent_id") @db.Uuid
+  sortOrder     Int       @default(0) @map("sort_order")
+  isLocked      Boolean   @default(false) @map("is_locked")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Relations
+  page        Page          @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  parent      Component?    @relation("ComponentTree", fields: [parentId], references: [id])
+  children    Component[]   @relation("ComponentTree")
+  annotations Annotation[]
+
+  @@index([pageId])
+  @@index([parentId])
+  @@index([componentType])
+  @@map("components")
+}
+
+// ============================================
+// Annotations
+// ============================================
+model Annotation {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  componentId    String    @map("component_id") @db.Uuid
+  pageId         String    @map("page_id") @db.Uuid
+  iterationId    String    @map("iteration_id") @db.Uuid
+  annotationType String    @default("requirement") @map("annotation_type") @db.VarChar(20)
+  content        String
+  status         String    @default("open") @db.VarChar(20)
+  priority       Int       @default(1)
+  color          String    @default("#3B82F6") @db.VarChar(20)
+  tag            String?   @db.VarChar(50)
+  createdBy      String    @map("created_by") @db.Uuid
+  assignedTo     String?   @map("assigned_to") @db.Uuid
+  dueDate        DateTime? @map("due_date") @db.Date
+  resolvedBy     String?   @map("resolved_by") @db.Uuid
+  resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz()
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Relations
+  component Component           @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  page      Page                @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  iteration Iteration           @relation(fields: [iterationId], references: [id], onDelete: Cascade)
+  creator   User                @relation("AnnotationCreator", fields: [createdBy], references: [id])
+  comments  AnnotationComment[]
+
+  @@index([componentId])
+  @@index([pageId])
+  @@index([iterationId])
+  @@index([annotationType])
+  @@index([status])
+  @@map("annotations")
+}
+
+// ============================================
+// Annotation Comments
+// ============================================
+model AnnotationComment {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  annotationId String   @map("annotation_id") @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  content      String
+  mentions     Json     @default("[]")
+  attachments  Json     @default("[]")
+  isDeleted    Boolean  @default(false) @map("is_deleted")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Relations
+  annotation Annotation @relation(fields: [annotationId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@index([annotationId])
+  @@index([userId])
+  @@map("annotation_comments")
+}
+
+// ============================================
+// Preview Links
+// ============================================
+model PreviewLink {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  iterationId    String    @map("iteration_id") @db.Uuid
+  token          String    @unique @db.VarChar(100)
+  name           String?   @db.VarChar(100)
+  password       String?   @db.VarChar(255)
+  viewCount      Int       @default(0) @map("view_count")
+  uniqueVisitors Int       @default(0) @map("unique_visitors")
+  expiresAt      DateTime? @map("expires_at") @db.Timestamptz()
+  createdBy      String    @map("created_by") @db.Uuid
+  lastAccessedAt DateTime? @map("last_accessed_at") @db.Timestamptz()
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  // Relations
+  iteration   Iteration           @relation(fields: [iterationId], references: [id], onDelete: Cascade)
+  accessLogs  PreviewAccessLog[]
+
+  @@index([token])
+  @@index([iterationId])
+  @@map("preview_links")
+}
+
+// ============================================
+// Preview Access Logs (访客分析)
+// ============================================
+model PreviewAccessLog {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  previewLinkId  String    @map("preview_link_id") @db.Uuid
+  visitorId      String    @map("visitor_id") @db.VarChar(100)  // 基于 cookie 的访客标识
+  ip             String?   @db.VarChar(50)
+  userAgent      String?   @map("user_agent") @db.VarChar(500)
+  referer        String?   @db.VarChar(500)
+  country        String?   @db.VarChar(50)
+  city           String?   @db.VarChar(50)
+  deviceType     String?   @map("device_type") @db.VarChar(20)  // desktop/mobile/tablet
+  browser        String?   @db.VarChar(50)
+  pageViews      Int       @default(1) @map("page_views")
+  duration       Int       @default(0)  // 停留时长（秒）
+  firstVisitAt   DateTime  @default(now()) @map("first_visit_at") @db.Timestamptz()
+  lastVisitAt    DateTime  @default(now()) @map("last_visit_at") @db.Timestamptz()
+  visitCount     Int       @default(1) @map("visit_count")
+
+  // Relations
+  previewLink PreviewLink @relation(fields: [previewLinkId], references: [id], onDelete: Cascade)
+
+  @@unique([previewLinkId, visitorId])
+  @@index([previewLinkId])
+  @@index([visitorId])
+  @@index([firstVisitAt])
+  @@map("preview_access_logs")
+}
+
+// ============================================
+// Activities
+// ============================================
+model Activity {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId  String   @map("project_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  actionType String   @map("action_type") @db.VarChar(50)
+  targetType String?  @map("target_type") @db.VarChar(50)
+  targetId   String?  @map("target_id") @db.Uuid
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([projectId])
+  @@index([projectId, createdAt])
+  @@map("activities")
+}
+
+// ============================================
+// Snapshots (Version Snapshots)
+// ============================================
+model Snapshot {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  iterationId    String   @map("iteration_id") @db.Uuid
+  name           String   @db.VarChar(200)
+  version        String   @db.VarChar(20)
+  data           String   @db.Text
+  size           Int      @default(0)
+  pageCount      Int      @default(0) @map("page_count")
+  componentCount Int      @default(0) @map("component_count")
+  createdBy      String   @map("created_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  // Relations
+  iteration Iteration @relation(fields: [iterationId], references: [id], onDelete: Cascade)
+
+  @@index([iterationId])
+  @@index([iterationId, createdAt])
+  @@map("snapshots")
+}
+
+// ============================================
+// Verification Codes (SMS Verification)
+// ============================================
+model VerificationCode {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  phone     String   @db.VarChar(20)
+  code      String   @db.VarChar(10)
+  purpose   String   @db.VarChar(20)  // 'login' | 'comment'
+  used      Boolean  @default(false)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz()
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@index([phone, purpose])
+  @@index([expiresAt])
+  @@map("verification_codes")
+}

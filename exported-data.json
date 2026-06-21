@@ -1,0 +1,192 @@
+{
+  "project": {
+    "name": "CRM客户管理系统",
+    "description": "一个现代化的客户关系管理系统"
+  },
+  "iteration": {
+    "id": "fdf57296-6783-40f2-a820-047b7a6baaea",
+    "name": "v0.1 初始版本",
+    "version": "0.1",
+    "status": "editing",
+    "description": null
+  },
+  "pages": [
+    {
+      "id": "65a59501-b376-40c5-9604-cda12735068b",
+      "name": "客户详情页",
+      "slug": "客户详情页",
+      "deviceType": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "bgColor": "#FFFFFF",
+      "components": [
+        {
+          "id": "dd71bae1-f9cb-4ff1-be2a-032da4fe51b0",
+          "type": "Text",
+          "name": "页面标题",
+          "props": {
+            "content": "客户详情页",
+            "fontSize": 24,
+            "fontWeight": "bold"
+          },
+          "layout": {
+            "h": 40,
+            "w": 400,
+            "x": 24,
+            "y": 24
+          },
+          "styles": {},
+          "interactions": [],
+          "annotations": [
+            {
+              "id": "fa9d621f-a88d-4632-b1e0-4720086b5d92",
+              "type": "requirement",
+              "content": "页面标题需要显示客户名称",
+              "status": "open",
+              "priority": 1,
+              "tag": "R1"
+            }
+          ]
+        },
+        {
+          "id": "e313fe69-1571-41d3-b722-df160b52132e",
+          "type": "Card",
+          "name": "客户信息卡片",
+          "props": {
+            "title": "基本信息",
+            "content": "客户名称、联系方式、地址等"
+          },
+          "layout": {
+            "h": 200,
+            "w": 400,
+            "x": 24,
+            "y": 80
+          },
+          "styles": {},
+          "interactions": [],
+          "annotations": []
+        },
+        {
+          "id": "d1b561ae-22ea-4a33-9f7d-45d4a95d90d2",
+          "type": "Input",
+          "name": "客户名称",
+          "props": {
+            "label": "客户名称",
+            "placeholder": "请输入客户名称"
+          },
+          "layout": {
+            "h": 44,
+            "w": 360,
+            "x": 40,
+            "y": 120
+          },
+          "styles": {},
+          "interactions": [],
+          "annotations": [
+            {
+              "id": "5d7d3c75-5277-4fdf-8529-890864896486",
+              "type": "requirement",
+              "content": "客户名称必填，最大长度50字符",
+              "status": "open",
+              "priority": 1,
+              "tag": "R1"
+            }
+          ]
+        },
+        {
+          "id": "ccacbb4c-ac1b-4cd4-9599-5a88a2441628",
+          "type": "Input",
+          "name": "联系电话",
+          "props": {
+            "type": "tel",
+            "label": "联系电话",
+            "placeholder": "请输入联系电话"
+          },
+          "layout": {
+            "h": 44,
+            "w": 360,
+            "x": 40,
+            "y": 180
+          },
+          "styles": {},
+          "interactions": [],
+          "annotations": [
+            {
+              "id": "2c99f940-8a11-4f42-b06b-bfc2413ffa1e",
+              "type": "requirement",
+              "content": "联系电话需要校验手机号格式",
+              "status": "open",
+              "priority": 1,
+              "tag": "R1"
+            }
+          ]
+        },
+        {
+          "id": "cef53401-a849-450f-a265-7c5102dbb9f9",
+          "type": "List",
+          "name": "联系人列表",
+          "props": {
+            "items": [
+              {
+                "title": "张三",
+                "description": "13800138000"
+              },
+              {
+                "title": "李四",
+                "description": "13900139000"
+              }
+            ]
+          },
+          "layout": {
+            "h": 200,
+            "w": 400,
+            "x": 24,
+            "y": 300
+          },
+          "styles": {},
+          "interactions": [],
+          "annotations": [
+            {
+              "id": "e998d4ca-055e-4417-b0c5-10a349842e9e",
+              "type": "requirement",
+              "content": "联系人列表支持搜索和排序",
+              "status": "open",
+              "priority": 2,
+              "tag": "R2"
+            }
+          ]
+        },
+        {
+          "id": "154f8eb9-a8e1-459d-b4b6-92550b627384",
+          "type": "Button",
+          "name": "保存按钮",
+          "props": {
+            "text": "保存",
+            "variant": "primary"
+          },
+          "layout": {
+            "h": 44,
+            "w": 120,
+            "x": 24,
+            "y": 520
+          },
+          "styles": {},
+          "interactions": [],
+          "annotations": [
+            {
+              "id": "52525934-1c35-49c6-ab91-e777b85fb202",
+              "type": "requirement",
+              "content": "保存成功后显示Toast提示",
+              "status": "open",
+              "priority": 2,
+              "tag": "R2"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "exportedAt": "2026-06-17T13:55:10.237Z"
+}

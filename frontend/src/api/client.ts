@@ -1,0 +1,265 @@
+import type {
+  User,
+  Project,
+  Iteration,
+  Page,
+  Component,
+  Annotation,
+  ApiResponse,
+} from '@/types/schema';
+
+const API_BASE_URL = typeof window !== 'undefined'
+  ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1')
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1');
+
+class ApiClient {
+  private baseUrl: string;
+  private token: string | null = null;
+
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl;
+    if (typeof window !== 'undefined') {
+      this.token = localStorage.getItem('auth_token');
+    }
+  }
+
+  setToken(token: string | null) {
+    this.token = token;
+    if (typeof window !== 'undefined') {
+      if (token) {
+        localStorage.setItem('auth_token', token);
+      } else {
+        localStorage.removeItem('auth_token');
+      }
+    }
+  }
+
+  getToken(): string | null {
+    return this.token;
+  }
+
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<ApiResponse<T>> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string>),
+    };
+
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+
+    const url = `${this.baseUrl}${endpoint}`;
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || `请求失败 (${response.status})`);
+      }
+
+      return data;
+    } catch (error: any) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[API] Error:', error.message);
+      }
+      throw error;
+    }
+  }
+
+  // ============================================
+  // Auth
+  // ============================================
+
+  async register(email: string, password: string, name: string) {
+    const result = await this.request<{ token: string; user: User }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ email, password, name }),
+    });
+    if (result.data?.token) {
+      this.setToken(result.data.token);
+    }
+    return result;
+  }
+
+  async login(email: string, password: string) {
+    const result = await this.request<{ token: string; user: User }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    if (result.data?.token) {
+      this.setToken(result.data.token);
+    }
+    return result;
+  }
+
+  async getMe() {
+    return this.request<User>('/auth/me');
+  }
+
+  logout() {
+    this.setToken(null);
+  }
+
+  // ============================================
+  // Projects
+  // ============================================
+
+  async getProjects(page = 1, pageSize = 20) {
+    return this.request<Project[]>(`/projects?page=${page}&pageSize=${pageSize}`);
+  }
+
+  async createProject(name: string, description?: string) {
+    return this.request<Project>('/projects', {
+      method: 'POST',
+      body: JSON.stringify({ name, description }),
+    });
+  }
+
+  async getProject(id: string) {
+    return this.request<Project & { currentIteration?: Iteration }>(`/projects/${id}`);
+  }
+
+  async updateProject(id: string, data: Partial<Project>) {
+    return this.request<Project>(`/projects/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteProject(id: string) {
+    return this.request<void>(`/projects/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ============================================
+  // Iterations
+  // ============================================
+
+  async getIterations(projectId: string) {
+    return this.request<Iteration[]>(`/projects/${projectId}/iterations`);
+  }
+
+  async createIteration(projectId: string, name: string, version: string, description?: string, basedOnId?: string) {
+    return this.request<Iteration>(`/projects/${projectId}/iterations`, {
+      method: 'POST',
+      body: JSON.stringify({ name, version, description, basedOnId }),
+    });
+  }
+
+  async getIteration(id: string) {
+    return this.request<Iteration & { pages: Page[] }>(`/iterations/${id}`);
+  }
+
+  // ============================================
+  // Pages
+  // ============================================
+
+  async getPages(iterationId: string) {
+    return this.request<Page[]>(`/iterations/${iterationId}/pages`);
+  }
+
+  async createPage(iterationId: string, name: string, deviceType?: string) {
+    return this.request<Page>(`/iterations/${iterationId}/pages`, {
+      method: 'POST',
+      body: JSON.stringify({ name, deviceType }),
+    });
+  }
+
+  async getPage(id: string) {
+    return this.request<Page & { components: Component[] }>(`/pages/${id}`);
+  }
+
+  async updatePage(id: string, data: Partial<Page>) {
+    return this.request<Page>(`/pages/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deletePage(id: string) {
+    return this.request<void>(`/pages/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async duplicatePage(id: string) {
+    return this.request<Page>(`/pages/${id}/duplicate`, {
+      method: 'POST',
+    });
+  }
+
+  async reorderPage(id: string, sortOrder: number) {
+    return this.request<Page>(`/pages/${id}/reorder`, {
+      method: 'PATCH',
+      body: JSON.stringify({ sortOrder }),
+    });
+  }
+
+  // ============================================
+  // Components
+  // ============================================
+
+  async getComponents(pageId: string) {
+    return this.request<Component[]>(`/pages/${pageId}/components`);
+  }
+
+  async createComponent(pageId: string, component: Partial<Component>) {
+    return this.request<Component>(`/pages/${pageId}/components`, {
+      method: 'POST',
+      body: JSON.stringify(component),
+    });
+  }
+
+  async updateComponent(id: string, data: Partial<Component>) {
+    return this.request<Component>(`/components/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteComponent(id: string) {
+    return this.request<void>(`/components/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ============================================
+  // Annotations
+  // ============================================
+
+  async getAnnotations(iterationId: string, componentId?: string) {
+    const query = componentId ? `?componentId=${componentId}` : '';
+    return this.request<Annotation[]>(`/iterations/${iterationId}/annotations${query}`);
+  }
+
+  async createAnnotation(data: Partial<Annotation>) {
+    return this.request<Annotation>('/annotations', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateAnnotation(id: string, data: Partial<Annotation>) {
+    return this.request<Annotation>(`/annotations/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteAnnotation(id: string) {
+    return this.request<void>(`/annotations/${id}`, {
+      method: 'DELETE',
+    });
+  }
+}
+
+export const apiClient = new ApiClient(API_BASE_URL);
