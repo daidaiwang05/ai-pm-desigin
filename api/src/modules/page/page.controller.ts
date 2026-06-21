@@ -4,6 +4,14 @@ import { sendSuccess, sendError } from '../../utils/response';
 import { AuthRequest } from '../../middleware/auth';
 
 export class PageController {
+  // 辅助方法：检查用户是否已认证
+  private ensureAuthenticated(req: AuthRequest, res: Response): string | null {
+    if (!req.userId) {
+      sendError(res, 'UNAUTHORIZED', '未提供认证令牌', 401);
+      return null;
+    }
+    return req.userId;
+  }
   async list(req: AuthRequest, res: Response): Promise<void> {
     try {
       const pages = await pageService.list(req.params.iid);
@@ -15,6 +23,9 @@ export class PageController {
 
   async create(req: AuthRequest, res: Response): Promise<void> {
     try {
+      const userId = this.ensureAuthenticated(req, res);
+      if (!userId) return;
+
       const { name, slug, description, pageType, deviceType, viewportW, viewportH, bgColor } = req.body;
 
       if (!name) {
@@ -22,7 +33,7 @@ export class PageController {
         return;
       }
 
-      const page = await pageService.create(req.params.iid, req.userId!, {
+      const page = await pageService.create(req.params.iid, userId, {
         name,
         slug,
         description,
@@ -40,7 +51,10 @@ export class PageController {
 
   async getById(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const page = await pageService.getById(req.params.id, req.userId!);
+      const userId = this.ensureAuthenticated(req, res);
+      if (!userId) return;
+
+      const page = await pageService.getById(req.params.id, userId);
       sendSuccess(res, page);
     } catch (error: any) {
       if (error.message === '页面不存在') {
@@ -55,6 +69,9 @@ export class PageController {
 
   async update(req: AuthRequest, res: Response): Promise<void> {
     try {
+      const userId = this.ensureAuthenticated(req, res);
+      if (!userId) return;
+
       // 白名单过滤，防止 mass assignment
       const allowedFields = ['name', 'slug', 'description', 'bgColor', 'sortOrder', 'deviceType', 'viewportW', 'viewportH', 'pageType'];
       const filteredData: Record<string, any> = {};
@@ -63,7 +80,7 @@ export class PageController {
           filteredData[key] = req.body[key];
         }
       }
-      const page = await pageService.update(req.params.id, req.userId!, filteredData);
+      const page = await pageService.update(req.params.id, userId, filteredData);
       sendSuccess(res, page);
     } catch (error: any) {
       if (error.message === '页面不存在') {
@@ -78,7 +95,10 @@ export class PageController {
 
   async delete(req: AuthRequest, res: Response): Promise<void> {
     try {
-      await pageService.delete(req.params.id, req.userId!);
+      const userId = this.ensureAuthenticated(req, res);
+      if (!userId) return;
+
+      await pageService.delete(req.params.id, userId);
       sendSuccess(res, { message: '页面已删除' });
     } catch (error: any) {
       if (error.message === '页面不存在') {
@@ -107,21 +127,32 @@ export class PageController {
 
   async reorderSingle(req: AuthRequest, res: Response): Promise<void> {
     try {
+      const userId = this.ensureAuthenticated(req, res);
+      if (!userId) return;
+
       const { sortOrder } = req.body;
       if (sortOrder === undefined) {
         sendError(res, 'VALIDATION_ERROR', 'sortOrder 为必填项', 400);
         return;
       }
-      const page = await pageService.update(req.params.id, { sortOrder });
+      // 传递 userId 进行权限检查
+      const page = await pageService.update(req.params.id, userId, { sortOrder });
       sendSuccess(res, page);
     } catch (error: any) {
-      sendError(res, 'INTERNAL_ERROR', error.message, 500);
+      if (error.message === '无权访问此项目') {
+        sendError(res, 'FORBIDDEN', error.message, 403);
+      } else {
+        sendError(res, 'INTERNAL_ERROR', error.message, 500);
+      }
     }
   }
 
   async duplicate(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const page = await pageService.duplicate(req.params.id, req.userId!);
+      const userId = this.ensureAuthenticated(req, res);
+      if (!userId) return;
+
+      const page = await pageService.duplicate(req.params.id, userId);
       sendSuccess(res, page, 201);
     } catch (error: any) {
       if (error.message === '页面不存在') {

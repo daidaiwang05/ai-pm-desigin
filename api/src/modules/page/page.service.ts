@@ -73,9 +73,10 @@ export class PageService {
   }
 
   async getById(pageId: string, userId: string) {
-    // 验证用户有权访问此页面
-    const accessPage = await checkPageAccess(userId, pageId);
+    // 验证用户有权访问此页面（同时获取页面信息，避免重复查询）
+    await checkPageAccess(userId, pageId);
 
+    // checkPageAccess 已验证页面存在且用户有权访问，直接查询完整数据
     const page = await prisma.page.findUnique({
       where: { id: pageId },
       include: {
@@ -95,6 +96,7 @@ export class PageService {
       },
     });
 
+    // 安全检查：虽然 checkPageAccess 已验证，但双重检查以防并发删除
     if (!page || page.deletedAt) {
       throw new Error('页面不存在');
     }

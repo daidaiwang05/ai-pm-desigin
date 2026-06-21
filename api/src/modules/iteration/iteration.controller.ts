@@ -4,6 +4,14 @@ import { sendSuccess, sendError } from '../../utils/response';
 import { AuthRequest } from '../../middleware/auth';
 
 export class IterationController {
+  // 辅助方法：检查用户是否已认证
+  private ensureAuthenticated(req: AuthRequest, res: Response): string | null {
+    if (!req.userId) {
+      sendError(res, 'UNAUTHORIZED', '未提供认证令牌', 401);
+      return null;
+    }
+    return req.userId;
+  }
   async list(req: AuthRequest, res: Response): Promise<void> {
     try {
       const iterations = await iterationService.list(req.params.pid);
@@ -15,6 +23,9 @@ export class IterationController {
 
   async create(req: AuthRequest, res: Response): Promise<void> {
     try {
+      const userId = this.ensureAuthenticated(req, res);
+      if (!userId) return;
+
       const { name, version, description, basedOnId } = req.body;
 
       if (!name || !version) {
@@ -22,7 +33,7 @@ export class IterationController {
         return;
       }
 
-      const iteration = await iterationService.create(req.params.pid, req.userId!, {
+      const iteration = await iterationService.create(req.params.pid, userId, {
         name,
         version,
         description,
@@ -40,7 +51,10 @@ export class IterationController {
 
   async getById(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const iteration = await iterationService.getById(req.params.id, req.userId!);
+      const userId = this.ensureAuthenticated(req, res);
+      if (!userId) return;
+
+      const iteration = await iterationService.getById(req.params.id, userId);
       sendSuccess(res, iteration);
     } catch (error: any) {
       if (error.message === '迭代版本不存在') {
@@ -55,7 +69,10 @@ export class IterationController {
 
   async setCurrent(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const iteration = await iterationService.setCurrent(req.params.id, req.userId!);
+      const userId = this.ensureAuthenticated(req, res);
+      if (!userId) return;
+
+      const iteration = await iterationService.setCurrent(req.params.id, userId);
       sendSuccess(res, iteration);
     } catch (error: any) {
       if (error.message === '迭代版本不存在') {
