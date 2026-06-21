@@ -40,11 +40,13 @@ export class IterationController {
 
   async getById(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const iteration = await iterationService.getById(req.params.id);
+      const iteration = await iterationService.getById(req.params.id, req.userId!);
       sendSuccess(res, iteration);
     } catch (error: any) {
       if (error.message === '迭代版本不存在') {
         sendError(res, 'NOT_FOUND', error.message, 404);
+      } else if (error.message === '无权访问此项目') {
+        sendError(res, 'FORBIDDEN', error.message, 403);
       } else {
         sendError(res, 'INTERNAL_ERROR', error.message, 500);
       }
@@ -53,11 +55,13 @@ export class IterationController {
 
   async setCurrent(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const iteration = await iterationService.setCurrent(req.params.id);
+      const iteration = await iterationService.setCurrent(req.params.id, req.userId!);
       sendSuccess(res, iteration);
     } catch (error: any) {
       if (error.message === '迭代版本不存在') {
         sendError(res, 'NOT_FOUND', error.message, 404);
+      } else if (error.message === '无权访问此项目') {
+        sendError(res, 'FORBIDDEN', error.message, 403);
       } else {
         sendError(res, 'INTERNAL_ERROR', error.message, 500);
       }

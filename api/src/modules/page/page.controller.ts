@@ -40,11 +40,13 @@ export class PageController {
 
   async getById(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const page = await pageService.getById(req.params.id);
+      const page = await pageService.getById(req.params.id, req.userId!);
       sendSuccess(res, page);
     } catch (error: any) {
       if (error.message === '页面不存在') {
         sendError(res, 'NOT_FOUND', error.message, 404);
+      } else if (error.message === '无权访问此项目') {
+        sendError(res, 'FORBIDDEN', error.message, 403);
       } else {
         sendError(res, 'INTERNAL_ERROR', error.message, 500);
       }
@@ -61,11 +63,13 @@ export class PageController {
           filteredData[key] = req.body[key];
         }
       }
-      const page = await pageService.update(req.params.id, filteredData);
+      const page = await pageService.update(req.params.id, req.userId!, filteredData);
       sendSuccess(res, page);
     } catch (error: any) {
       if (error.message === '页面不存在') {
         sendError(res, 'NOT_FOUND', error.message, 404);
+      } else if (error.message === '无权访问此项目') {
+        sendError(res, 'FORBIDDEN', error.message, 403);
       } else {
         sendError(res, 'INTERNAL_ERROR', error.message, 500);
       }
@@ -74,11 +78,13 @@ export class PageController {
 
   async delete(req: AuthRequest, res: Response): Promise<void> {
     try {
-      await pageService.delete(req.params.id);
+      await pageService.delete(req.params.id, req.userId!);
       sendSuccess(res, { message: '页面已删除' });
     } catch (error: any) {
       if (error.message === '页面不存在') {
         sendError(res, 'NOT_FOUND', error.message, 404);
+      } else if (error.message === '无权访问此项目') {
+        sendError(res, 'FORBIDDEN', error.message, 403);
       } else {
         sendError(res, 'INTERNAL_ERROR', error.message, 500);
       }
