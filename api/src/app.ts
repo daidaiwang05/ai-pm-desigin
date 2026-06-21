@@ -31,6 +31,7 @@ import verificationRoutes from './modules/verification/verification.routes';
 import trashRoutes from './modules/trash/trash.routes';
 import analyticsRoutes from './modules/analytics/analytics.routes';
 import designSystemRoutes from './modules/design-system/design-system.routes';
+import aiRoutes from './modules/ai/ai.routes';
 
 const app = express();
 
@@ -65,6 +66,17 @@ if (process.env.NODE_ENV !== 'test') {
 // ============================================
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// AI Engine health check (不需要认证)
+app.get('/api/v1/ai/health', async (req, res) => {
+  try {
+    const { aiService } = await import('./modules/ai/ai.service');
+    const health = await aiService.healthCheck();
+    res.json({ success: true, data: health });
+  } catch (error: any) {
+    res.status(503).json({ success: false, error: { code: 'SERVICE_UNAVAILABLE', message: 'AI 引擎不可用' } });
+  }
 });
 
 // ============================================
@@ -110,6 +122,9 @@ apiRouter.use('/', analyticsRoutes);
 
 // Design System (设计规范)
 apiRouter.use('/', designSystemRoutes);
+
+// AI Generation (AI 生成)
+apiRouter.use('/', aiRoutes);
 
 // Mount API router
 app.use('/api/v1', apiRouter);

@@ -271,6 +271,140 @@ class ApiClient {
       method: 'DELETE',
     });
   }
+
+  // ============================================
+  // AI Generation
+  // ============================================
+
+  async aiHealthCheck() {
+    return this.request<any>('/ai/health');
+  }
+
+  async aiGenerate(prompt: string, options?: {
+    device_type?: string;
+    viewport_w?: number;
+    viewport_h?: number;
+    page_count?: number;
+  }) {
+    return this.request<any>('/ai/generate', {
+      method: 'POST',
+      body: JSON.stringify({ prompt, ...options }),
+    });
+  }
+
+  async aiRefine(page: any, instruction: string, device_type?: string) {
+    return this.request<any>('/ai/refine', {
+      method: 'POST',
+      body: JSON.stringify({ page, instruction, device_type }),
+    });
+  }
+
+  async aiAddComponent(page: any, component_type: string, description: string, device_type?: string) {
+    return this.request<any>('/ai/add-component', {
+      method: 'POST',
+      body: JSON.stringify({ page, component_type, description, device_type }),
+    });
+  }
+
+  async aiGeneratePRD(product_name: string, description: string, options?: {
+    target_users?: string;
+    core_features?: string[];
+    industry?: string;
+  }) {
+    return this.request<any>('/ai/generate-prd', {
+      method: 'POST',
+      body: JSON.stringify({ product_name, description, ...options }),
+    });
+  }
+
+  async aiGetComponents(category?: string) {
+    const query = category ? `?category=${category}` : '';
+    return this.request<any[]>(`/ai/components${query}`);
+  }
+
+  async aiGetComponentProps(type: string) {
+    return this.request<any>(`/ai/component-props/${type}`);
+  }
+
+  /**
+   * AI 流式生成（SSE）
+   * 返回 EventSource 用于接收流式数据
+   */
+  aiGenerateStream(prompt: string, options?: {
+    device_type?: string;
+    viewport_w?: number;
+    viewport_h?: number;
+    page_count?: number;
+  }): EventSource {
+    const token = this.getToken();
+    const url = new URL(`${this.baseUrl}/ai/generate/stream`);
+
+    // 使用 POST + fetch 实现 SSE（因为需要发送 body）
+    // 这里返回一个自定义的 EventSource-like 对象
+    const eventSource = {
+      onmessage: null as ((event: MessageEvent) => void) | null,
+      onerror: null as ((event: Event) => void) | null,
+      close: () => {},
+    };
+
+    // 使用 fetch 发送 POST 请求并处理 SSE 流
+    fetch(`${this.baseUrl}/ai/generate/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ prompt, ...options }),
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Stream request failed');
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) return;
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        const processStream = async () => {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (eventSource.onmessage) {
+                  eventSource.onmessage(new MessageEvent('message', { data }));
+                }
+              }
+            }
+          }
+        };
+
+        processStream().catch(err => {
+          if (eventSource.onerror) {
+            eventSource.onerror(new Event('error'));
+          }
+        });
+
+        eventSource.close = () => {
+          reader.cancel();
+        };
+      })
+      .catch(err => {
+        if (eventSource.onerror) {
+          eventSource.onerror(new Event('error'));
+        }
+      });
+
+    return eventSource as unknown as EventSource;
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);

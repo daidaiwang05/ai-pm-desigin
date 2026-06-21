@@ -23,6 +23,6 @@ export const config = {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
   },
   ai: {
-    engineUrl: process.env.AI_ENGINE_URL || 'http://localhost:8000',
+    engineUrl: process.env.AI_ENGINE_URL || 'http://localhost:8001',
   },
 };

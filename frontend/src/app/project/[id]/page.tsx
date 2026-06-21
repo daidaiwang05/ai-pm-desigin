@@ -8,6 +8,7 @@ import { RightPanel } from "@/components/editor/RightPanel";
 import { ComponentPanel } from "@/components/editor/ComponentPanel";
 import { StatusBar } from "@/components/editor/StatusBar";
 import { AnnotationPanel } from "@/components/annotation/AnnotationPanel";
+import { AIAssistantPanel } from "@/components/ai/AIAssistantPanel";
 import { useHistoryStore } from "@/stores/history";
 import type { Page as PageType, Component, Iteration as IterationType } from "@/types/schema";
 
@@ -32,6 +33,7 @@ export default function ProjectEditorPage() {
   const [selectedComponent, setSelectedComponent] = useState<Component | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAnnotations, setShowAnnotations] = useState(false);
+  const [showAI, setShowAI] = useState(false);
 
   // History store for undo/redo
   const { undo, redo, canUndo, canRedo, clear: clearHistory } = useHistoryStore();
@@ -323,6 +325,15 @@ export default function ProjectEditorPage() {
           >
             标注
           </button>
+          <div className="w-px h-6 bg-gray-200" />
+          <button
+            onClick={() => setShowAI(!showAI)}
+            className={`px-2 py-1 text-xs rounded ${
+              showAI ? "bg-purple-100 text-purple-700" : "hover:bg-gray-100"
+            }`}
+          >
+            🤖 AI 助手
+          </button>
         </div>
 
         {/* Canvas */}
@@ -342,6 +353,29 @@ export default function ProjectEditorPage() {
           </div>
         )}
       </div>
+
+      {/* AI Assistant Panel */}
+      {showAI && (
+        <div className="absolute right-4 top-14 z-50">
+          <AIAssistantPanel
+            currentPage={currentPage}
+            onApplyGenerated={(generatedPages) => {
+              // 应用生成的页面到当前项目
+              console.log("Apply generated pages:", generatedPages);
+              // TODO: 将生成的页面保存到后端
+              setShowAI(false);
+            }}
+            onApplyRefined={(refinedPage) => {
+              // 应用优化后的页面
+              console.log("Apply refined page:", refinedPage);
+              if (currentPage) {
+                loadPage(currentPage.id);
+              }
+            }}
+            onClose={() => setShowAI(false)}
+          />
+        </div>
+      )}
 
       {/* Right Panel - Properties or Annotations */}
       {showAnnotations && selectedComponent && iteration ? (
